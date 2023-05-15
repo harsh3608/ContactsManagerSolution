@@ -1,5 +1,10 @@
-﻿using CRUDExample.Filters.ActionFilters;
+﻿using ContactsManager.Core.Domain.IdentityEntities;
+using CRUDExample.Filters.ActionFilters;
 using Entities;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Repositories;
 using RepositoryContracts;
@@ -8,55 +13,96 @@ using Services;
 
 namespace CRUDExample
 {
- public static class ConfigureServicesExtension
- {
-  public static IServiceCollection ConfigureServices(this IServiceCollection services, IConfiguration configuration)
-  {
-   services.AddTransient<ResponseHeaderActionFilter>();
-
-   //it adds controllers and views as services
-   services.AddControllersWithViews(options => {
-    //options.Filters.Add<ResponseHeaderActionFilter>(5);
-
-    var logger = services.BuildServiceProvider().GetRequiredService<ILogger<ResponseHeaderActionFilter>>();
-
-    options.Filters.Add(new ResponseHeaderActionFilter(logger)
+    public static class ConfigureServicesExtension
     {
-     Key = "My-Key-From-Global",
-     Value = "My-Value-From-Global",
-     Order = 2
-    });
-   });
+        public static IServiceCollection ConfigureServices(this IServiceCollection services, IConfiguration configuration)
+        {
+            services.AddTransient<ResponseHeaderActionFilter>();
 
-   //add services into IoC container
-   services.AddScoped<ICountriesRepository, CountriesRepository>();
-   services.AddScoped<IPersonsRepository, PersonsRepository>();
+            //it adds controllers and views as services
+            services.AddControllersWithViews(options =>
+            {
+                //options.Filters.Add<ResponseHeaderActionFilter>(5);
 
-   services.AddScoped<ICountriesGetterService, CountriesGetterService>();
-   services.AddScoped<ICountriesAdderService, CountriesAdderService>();
-   services.AddScoped<ICountriesUploaderService, CountriesUploaderService>();
+                var logger = services.BuildServiceProvider().GetRequiredService<ILogger<ResponseHeaderActionFilter>>();
 
-   services.AddScoped<IPersonsGetterService, PersonsGetterServiceWithFewExcelFields>();
-   services.AddScoped<PersonsGetterService, PersonsGetterService>();
+                options.Filters.Add(new ResponseHeaderActionFilter(logger)
+                {
+                    Key = "My-Key-From-Global",
+                    Value = "My-Value-From-Global",
+                    Order = 2
+                });
 
-   services.AddScoped<IPersonsAdderService, PersonsAdderService>();
-   services.AddScoped<IPersonsDeleterService, PersonsDeleterService>();
-   services.AddScoped<IPersonsUpdaterService, PersonsUpdaterService>();
-   services.AddScoped<IPersonsSorterService, PersonsSorterService>();
+                options.Filters.Add(new AutoValidateAntiforgeryTokenAttribute());
+            });
 
-   services.AddDbContext<ApplicationDbContext>(options =>
-   {
-    options.UseSqlServer(configuration.GetConnectionString("DefaultConnection"));
-   });
 
-   services.AddTransient<PersonsListActionFilter>();
+            //add services into IoC container
+            services.AddScoped<ICountriesRepository, CountriesRepository>();
+            services.AddScoped<IPersonsRepository, PersonsRepository>();
 
-   services.AddHttpLogging(options =>
-   {
-    options.LoggingFields = Microsoft.AspNetCore.HttpLogging.HttpLoggingFields.RequestProperties | Microsoft.AspNetCore.HttpLogging.HttpLoggingFields.ResponsePropertiesAndHeaders;
-   });
+            services.AddScoped<ICountriesGetterService, CountriesGetterService>();
+            services.AddScoped<ICountriesAdderService, CountriesAdderService>();
+            services.AddScoped<ICountriesUploaderService, CountriesUploaderService>();
 
-   return services;
-  }
- }
+            services.AddScoped<IPersonsGetterService, PersonsGetterServiceWithFewExcelFields>();
+            services.AddScoped<PersonsGetterService, PersonsGetterService>();
+
+            services.AddScoped<IPersonsAdderService, PersonsAdderService>();
+            services.AddScoped<IPersonsDeleterService, PersonsDeleterService>();
+            services.AddScoped<IPersonsUpdaterService, PersonsUpdaterService>();
+            services.AddScoped<IPersonsSorterService, PersonsSorterService>();
+            services.AddTransient<PersonsListActionFilter>();
+
+            services.AddDbContext<ApplicationDbContext>(options =>
+            {
+                options.UseSqlServer(configuration.GetConnectionString("DefaultConnection"));
+            });
+            
+
+            //enable identity in this project
+            services.AddIdentity<ApplicationUser, ApplicationRole>(options =>
+            {
+                options.Password.RequiredLength = 6;
+                options.Password.RequireNonAlphanumeric = false;
+                options.Password.RequireUppercase = true;
+                options.Password.RequireLowercase = true;
+                options.Password.RequireDigit = true;
+                options.Password.RequiredUniqueChars = 3;
+            })
+
+                .AddEntityFrameworkStores<ApplicationDbContext>()
+
+                .AddDefaultTokenProviders()
+
+                .AddUserStore<UserStore<ApplicationUser, ApplicationRole, ApplicationDbContext, Guid>>()
+
+                .AddRoleStore<RoleStore<ApplicationRole, ApplicationDbContext, Guid>>() ;
+
+            services.AddAuthorization(options => 
+            {
+                options.FallbackPolicy = new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build(); //enforces authorization policy (user must be authenticated) for all the action methods
+
+                options.AddPolicy("NotAuthorized", policy =>
+                {
+                    policy.RequireAssertion(context =>
+                    {
+                        return !context.User.Identity.IsAuthenticated ;
+                    });
+                } );
+            });
+
+            services.ConfigureApplicationCookie(options =>
+            {
+                options.LoginPath = "/Account/Login";
+            });
+
+            services.AddHttpLogging(options =>
+            {
+                options.LoggingFields = Microsoft.AspNetCore.HttpLogging.HttpLoggingFields.RequestProperties | Microsoft.AspNetCore.HttpLogging.HttpLoggingFields.ResponsePropertiesAndHeaders;
+            });
+
+            return services;
+        }
+    }
 }
