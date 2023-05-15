@@ -8,7 +8,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace ContactsManager.UI.Controllers
 {
-    [AllowAnonymous]
+    //[AllowAnonymous]
     public class AccountController : Controller
     {
         private readonly UserManager<ApplicationUser> _userManager;
@@ -24,6 +24,7 @@ namespace ContactsManager.UI.Controllers
 
 
         [HttpGet]
+        [Authorize("NotAuthorized")]
         public IActionResult Register()
         {
             return View();
@@ -31,6 +32,8 @@ namespace ContactsManager.UI.Controllers
 
 
         [HttpPost]
+        [Authorize("NotAuthorized")]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> Register(RegisterDTO registerDTO)
         {
             //Check for validation errors
@@ -82,6 +85,7 @@ namespace ContactsManager.UI.Controllers
 
 
         [HttpGet]
+        [Authorize("NotAuthorized")]
         public IActionResult Login()
         {
             return View();
@@ -89,6 +93,7 @@ namespace ContactsManager.UI.Controllers
 
 
         [HttpPost]
+        [Authorize("NotAuthorized")]
         public async Task<IActionResult> Login(LoginDTO loginDTO, string? ReturnUrl)
         {
             if (!ModelState.IsValid)
@@ -122,14 +127,14 @@ namespace ContactsManager.UI.Controllers
             return View(loginDTO);
         }
 
-
+        [Authorize]
         public async Task<IActionResult> Logout()
         {
             await _signInManager.SignOutAsync();
             return RedirectToAction(nameof(PersonsController.Index), "Persons");
         }
 
-
+        [AllowAnonymous]
         public async Task<IActionResult> IsEmailAlreadyRegistered(string email)
         {
             ApplicationUser user = await _userManager.FindByEmailAsync(email);
