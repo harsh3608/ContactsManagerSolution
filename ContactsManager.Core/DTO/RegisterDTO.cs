@@ -1,4 +1,6 @@
-﻿using System;
+﻿using ContactsManager.Core.Enums;
+using Microsoft.AspNetCore.Mvc;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
@@ -14,6 +16,7 @@ namespace ContactsManager.Core.DTO
 
         [Required(ErrorMessage = "Email can't be blank")]
         [EmailAddress(ErrorMessage = "Enter valid email address")]
+        [Remote(action:"IsEmailAlreadyregistered", controller: "Account", ErrorMessage ="This Email is already in use !")]
         public string? Email { get; set; }
 
         [Required(ErrorMessage = "Phone can't be blank")]
@@ -29,7 +32,7 @@ namespace ContactsManager.Core.DTO
         [DataType(DataType.Password)]
         [Compare("Password", ErrorMessage = "Password and Confirm Password don't mat")]
         public string? ConfirmPassword { get; set; }
-        
 
+        public UserTypeOptions UserType { get; set; } = UserTypeOptions.User;
     }
 }
